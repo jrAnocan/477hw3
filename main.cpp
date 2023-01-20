@@ -457,10 +457,7 @@ int goVert(int x, int y, vector<vector<int>>& color_vector)
    
     for(int i=x ; i<grid_y; i++)
     {
-        //for(int j=y;j<grid_x; j++)
-        //{
-            cout<<"cell "<<y<<", "<<i<<" has color value: "<< color_vector[y][i]<<endl;
-        //}
+        
         if(color_vector[y][i]==color_vector[y][i+1])
         {
             res+=1;
@@ -482,13 +479,19 @@ void checkMatches(vector<vector<int>>& color_vector)
         {
             int res=0;
             res+=goVert(i,j,color_vector);
-            cout<<"vertical matching result for cell "<<j<<", "<<i<<" has value: "<<res<<endl;
+
+            cout<<"vertical matching result for cell "<<j<<", "<<i<<" has value: "<<res <<" has color: "<<color_vector[j][i]<<endl;       
+            //cout<<column_match_point[0]<<","<<column_match_point[1]<<","<< column_match_point[2]<<endl;
+            
             if(res>=2)
             {
+                //cout<<"vertical matching result for cell "<<j<<", "<<i<<" has value: "<<res<<endl;
+
                 column_match_point.push_back(i);
                 column_match_point.push_back(j);
                 column_match_point.push_back(res);
                 column_match = true;
+                
             }
         }
     }
@@ -512,7 +515,7 @@ void updateColors(vector<vector<int>>& color_vector)
         }
            
     }
-    color_vector[clicked_obj_x][0] = rand()%5;
+    color_vector[clicked_obj_x][0] = 1+rand()%5;
     checkMatches(color_vector);
     
 }
@@ -556,9 +559,8 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
 
                 glLoadIdentity();
 
-                if(column_match && j <= column_match_point[0]+column_match_point[2] && j>=column_match_point[2]-column_match_point[0]&& i == column_match_point[1])
+                if(column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
                 {
-
                     
                     
                     glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
@@ -568,6 +570,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                         column_match_point.clear();
                         explode_scale = 0;
                         column_match = false;
+                        
                     }
 
                 }
