@@ -23,12 +23,19 @@ int clicked_obj_x, clicked_obj_y;
 float explode_scale = 0;
 bool update_table = false;
 float slide_scale = 0;
+
+
+
 bool vertical_update = false;
 vector<int> row_match_point;
 vector<int> column_match_point;
+
 bool column_match = false;
 bool row_match = false;
 bool vertical_slide=false;
+bool row_update = false;
+bool row_slide = false;
+
 GLuint gProgram;
 int gWidth, gHeight;
 
@@ -470,20 +477,38 @@ int goVert(int x, int y, vector<vector<int>>& color_vector)
     return res;
 }
 
+int goHor(int y, int x, vector<vector<int>>& color_vector)
+{
+    int res = 0;
+   
+    for(int i=x ; i<grid_x-1; i++)
+    {
+        
+        if(color_vector[i][y]==color_vector[i+1][y])
+        {
+            res+=1;
+        }
+        else
+        {
+            return res;
+        }
+    }
+    return res;
+}
+
 void checkMatches(vector<vector<int>>& color_vector)
 {
     int res=0;
     int x,y;
-    if(column_match)
-    {
-        return ;
-    }
     
+    int res_hor=0;
+    int x_hor, y_hor;
 
     for(int i=0 ; i<grid_y; i++)
     {
         for(int j=0;j<grid_x; j++)
         {
+            
             if( !column_match_point.empty() && i==column_match_point[1] && j>column_match_point[0])
             {
                 continue;
@@ -502,23 +527,52 @@ void checkMatches(vector<vector<int>>& color_vector)
         }
        
     }
-    if(res>=2)
-            {
-                cout<<"vertical matching result for cell "<<y<<", "<<x<<" has value: "<<res<<endl;
 
-                column_match_point.push_back(x);
-                column_match_point.push_back(y);
-                column_match_point.push_back(res);
-                column_match_point.push_back(res);
-                column_match = true;
-                
+    for(int i=0 ; i<grid_y; i++)
+    {
+        for(int j=0;j<grid_x; j++)
+        {
+            
+            
+            int tmp = goHor(i,j,color_vector);
+            if(tmp>res_hor)
+            {
+                res_hor = tmp;
+                x_hor=i; y_hor=j;
             }
-    //goLeft(i,j,color_vector);
+
+            
+            //cout<<column_match_point[0]<<","<<column_match_point[1]<<","<< column_match_point[2]<<endl;
+            
+            
+        }
+       
+    }
+
+
+
+    if(res>=2)
+    {
+        cout<<"vertical matching result for cell "<<y<<", "<<x<<" has value: "<<res<<endl;
+        
+        column_match_point.push_back(x);
+        column_match_point.push_back(y);
+        column_match_point.push_back(res);
+        column_match_point.push_back(res);
+        column_match = true;
+                
+    }
+    if(res_hor>=2)
+    {
+        cout<<"horizontal matching result for cell "<<y_hor<<", "<<x_hor<<" has value: "<<res_hor<<endl;
+        
+        row_match_point.push_back(x_hor);
+        row_match_point.push_back(y_hor);
+        row_match_point.push_back(res_hor);
+        row_match_point.push_back(res_hor);
+        row_match = true;
+    }
     
-    
-   
-    //goUp();
-    //goDown();
 }
     
 
@@ -552,6 +606,21 @@ void columnMatchSlide(vector<vector<int>>& color_vector)
     column_match_point.clear();
     column_match =false;
 }
+
+void rowMatchSlide(vector<vector<int>>& color_vector)
+{
+    clicked_obj_y = row_match_point[0];
+    clicked_obj_x = row_match_point[1];
+    for(int x = 0 ;x<=row_match_point[2];x++)
+    {
+        updateColors(color_vector);
+        clicked_obj_x++;
+        
+    }
+    row_match_point.clear();
+    row_match =false;
+}
+
 
 void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>& color_vector)
 {
@@ -595,13 +664,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
 
                 glLoadIdentity();
 
-                
-
-
-                
-
-                
-              
+         
                 glTranslatef(start_x+3*i*(20.0/(grid_x*3)),start_y-4*j*(20.0/(grid_y*4)), -10);
 
                 glScalef(12.0/(grid_x*3),12.0/(grid_y*4),1.0);
@@ -621,7 +684,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                     {
                         glTranslatef(0,-slide_scale,0);
                         slide_scale += 0.1;
-                        if(slide_scale >= 4)
+                        if(slide_scale >= 7)
                         {
                             update_table = false;
                             slide_scale = 0;
@@ -631,12 +694,6 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                     
                    
                 }                    
-
-
-
-
-
-
 
 
 
@@ -652,6 +709,22 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                         update_table=true;
                     }
                 }
+
+               if(row_match && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
+               {
+                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
+                    explode_scale += 0.015;
+                    if(explode_scale > 0.5)
+                    {
+                        glColor3f(0,0,0);
+                        explode_scale = 0;
+                        row_match = false;
+                        row_match_point.clear();
+                        row_update = true;
+                    }
+               }
+
+
                 if(column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
                 {
                     
@@ -669,6 +742,20 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
 
                 }
                 
+                if(row_update && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
+                {
+                    color_vector[i][j]=-1;
+                    row_match_point[3]--;
+                    if(row_match_point[3]<0)
+                    {
+                        row_match_point[3] = row_match_point[2];
+                        row_slide=true;
+                        row_update = false;
+
+                    }
+
+                    
+                }
                 
                
                 if(  vertical_update  && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1] )
@@ -691,6 +778,21 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                             }
                         //}
                 }
+
+                if(row_slide && i >= row_match_point[1] && i< row_match_point[1]+row_match_point[2] &&  j == row_match_point[0])
+                {
+                    slide_scale += 0.2;
+                    glTranslatef(0,-slide_scale,0);
+                    if(slide_scale>=20)
+                    {
+                        slide_scale=0;
+                        
+                            row_slide=false;
+                            rowMatchSlide(color_vector);
+                            row_match_point.clear();
+                    }
+                }
+
                 if(vertical_slide && j <= column_match_point[0] &&  i == column_match_point[1])
                 {
                     slide_scale += 0.2;
