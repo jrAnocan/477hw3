@@ -23,12 +23,12 @@ int clicked_obj_x, clicked_obj_y;
 float explode_scale = 0;
 bool update_table = false;
 float slide_scale = 0;
-
+bool vertical_update = false;
 vector<int> row_match_point;
 vector<int> column_match_point;
 bool column_match = false;
 bool row_match = false;
-
+bool vertical_slide=false;
 GLuint gProgram;
 int gWidth, gHeight;
 
@@ -472,29 +472,47 @@ int goVert(int x, int y, vector<vector<int>>& color_vector)
 
 void checkMatches(vector<vector<int>>& color_vector)
 {
+    int res=0;
+    int x,y;
+    if(column_match)
+    {
+        return ;
+    }
     
+
     for(int i=0 ; i<grid_y; i++)
     {
         for(int j=0;j<grid_x; j++)
         {
-            int res=0;
-            res+=goVert(i,j,color_vector);
+            if( !column_match_point.empty() && i==column_match_point[1] && j>column_match_point[0])
+            {
+                continue;
+            }
+            int temp = goVert(i,j,color_vector);
+            if(temp>res)
+            {
+                res = temp;
+                x=i; y=j;
+            }
 
-            cout<<"vertical matching result for cell "<<j<<", "<<i<<" has value: "<<res <<" has color: "<<color_vector[j][i]<<endl;       
+            
             //cout<<column_match_point[0]<<","<<column_match_point[1]<<","<< column_match_point[2]<<endl;
             
-            if(res>=2)
+            
+        }
+       
+    }
+    if(res>=2)
             {
-                //cout<<"vertical matching result for cell "<<j<<", "<<i<<" has value: "<<res<<endl;
+                cout<<"vertical matching result for cell "<<y<<", "<<x<<" has value: "<<res<<endl;
 
-                column_match_point.push_back(i);
-                column_match_point.push_back(j);
+                column_match_point.push_back(x);
+                column_match_point.push_back(y);
+                column_match_point.push_back(res);
                 column_match_point.push_back(res);
                 column_match = true;
                 
             }
-        }
-    }
     //goLeft(i,j,color_vector);
     
     
@@ -520,6 +538,21 @@ void updateColors(vector<vector<int>>& color_vector)
     
 }
 
+
+void columnMatchSlide(vector<vector<int>>& color_vector)
+{
+    clicked_obj_y = column_match_point[0];
+    clicked_obj_x = column_match_point[1];
+    for(int x = 0 ;x<=column_match_point[2];x++)
+    {
+        updateColors(color_vector);
+        clicked_obj_y++;
+        
+    }
+    column_match_point.clear();
+    column_match =false;
+}
+
 void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>& color_vector)
 {
     glClearColor(0, 0, 0, 1);
@@ -539,6 +572,9 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
 
                 switch (color_code)
                 {
+                case -1:
+                    glColor3f(0,0,0); //black
+                    break;
                 case 1:
                     glColor3f(0,0,1);
                     break;
@@ -559,62 +595,116 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
 
                 glLoadIdentity();
 
-                if(column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
-                {
-                    
-                    
-                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
-                    explode_scale += 0.01;
-                    if(explode_scale > 0.5)
-                    {
-                        column_match_point.clear();
-                        explode_scale = 0;
-                        column_match = false;
-                        
-                    }
+                
 
-                }
 
-                if(update_table && !clicked_on_object)
-                {
-                    if(i == clicked_obj_x && j < clicked_obj_y)
-                    {
-                        glTranslatef(start_x+3*i*(20.0/(grid_x*3)),start_y-4*j*(20.0/(grid_y*4))-slide_scale, -10);
-                        slide_scale += 0.03;
-                        if(slide_scale >= 4)
-                        {
-                            update_table = false;
-                            slide_scale = 0;
-                            updateColors(color_vector);
-                        }
+                
 
-                    }
-                    else
-                    {
-                        glTranslatef(start_x+3*i*(20.0/(grid_x*3)),start_y-4*j*(20.0/(grid_y*4)), -10);
-                    }
-                }                    
-
-                if(!update_table)
+                
+              
                 glTranslatef(start_x+3*i*(20.0/(grid_x*3)),start_y-4*j*(20.0/(grid_y*4)), -10);
 
                 glScalef(12.0/(grid_x*3),12.0/(grid_y*4),1.0);
                 
                 glRotatef(angle, 0, 1, 0);
             
+                if(update_table && !clicked_on_object)
+                {
+                    if(i == clicked_obj_x && clicked_obj_y==0)
+                    {
+                        update_table = false;
+                        updateColors(color_vector);
+                        
+
+                    }
+                    else if(i == clicked_obj_x && j < clicked_obj_y)
+                    {
+                        glTranslatef(0,-slide_scale,0);
+                        slide_scale += 0.1;
+                        if(slide_scale >= 4)
+                        {
+                            update_table = false;
+                            slide_scale = 0;
+                            updateColors(color_vector);
+                        }
+                    }
+                    
+                   
+                }                    
+
+
+
+
+
+
+
+
+
                     if(clicked_on_object && i == clicked_obj_x && j == clicked_obj_y)
                 {
                     glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
                     explode_scale += 0.01;
                     if(explode_scale > 0.5)
                     {
-                        
+                        color_vector[i][j]=-1;
                         explode_scale = 0;
                         clicked_on_object = false;
                         update_table=true;
                     }
                 }
-        
+                if(column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
+                {
+                    
+                    
+                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
+                    explode_scale += 0.015;
+                    if(explode_scale > 0.5)
+                    {
+                        glColor3f(0,0,0);
+                        explode_scale = 0;
+                        column_match = false;
+                        vertical_update=true;
+                    }
+                    
+
+                }
+                
+                
+               
+                if(  vertical_update  && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1] )
+                {
+                        color_vector[i][j]=-1;
+                        //slide_scale += 0.1;
+                        //glTranslatef(0,-slide_scale,0);
+                        //if(slide_scale >= 20)
+                        //{
+                            column_match_point[3]--;
+                        //    slide_scale = 0;
+                            if(column_match_point[3]<0)
+                            {
+                                column_match_point[3] = column_match_point[2];
+                                vertical_slide=true;
+                                vertical_update=false;
+                                
+                            //    column_match_point.clear();
+                            //    columnMatchSlide(color_vector);
+                            }
+                        //}
+                }
+                if(vertical_slide && j <= column_match_point[0] &&  i == column_match_point[1])
+                {
+                    slide_scale += 0.2;
+                    glTranslatef(0,-slide_scale,0);
+                    if(slide_scale>=20)
+                    {
+                        slide_scale=0;
+                        
+                            vertical_slide=false;
+                            columnMatchSlide(color_vector);
+                            column_match_point.clear();
+                    }
+
+                }
             drawModel();
         }
     }
