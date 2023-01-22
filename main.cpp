@@ -604,7 +604,7 @@ void updateColors(vector<vector<int>>& color_vector)
            
     }
     color_vector[clicked_obj_x][0] = 1+rand()%5;
-    checkMatches(color_vector);
+   
     
 }
 
@@ -646,7 +646,8 @@ void checkBlackColor(vector<vector<int>>color_vector)
         {
             if(color_vector[j][i]==-1 )
             {
-                color_vector[j][i]=color_vector[j][i-1];
+                //cout<<"cell "<<j<<","<<i<<"has color: "<<color_vector[j][i]<<endl;
+                color_vector[j][i]=1+rand()%5;
             }
         }
     }
@@ -705,7 +706,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                 glRotatef(angle, 0, 1, 0);
 
 
-                checkBlackColor(color_vector);
+                
     
                 if( !row_slide && vertical_slide && j <= column_match_point[0] &&  i == column_match_point[1])
                 {
@@ -820,7 +821,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                     {
                         update_table = false;
                         updateColors(color_vector);
-                        
+                        checkMatches(color_vector);
 
                     }
                     else if(i == clicked_obj_x && j < clicked_obj_y)
@@ -832,6 +833,8 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                             update_table = false;
                             slide_scale = 0;
                             updateColors(color_vector);
+                            checkMatches(color_vector);
+
                         }
                     }
                     
@@ -860,7 +863,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                 color_vector = getColorVector(grid_x,grid_y);
                 restart=false;
             }   
-
+            checkBlackColor(color_vector);
             drawModel();
         }
     }
