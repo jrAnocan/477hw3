@@ -15,6 +15,7 @@
 
 using namespace std;
 
+string obj_name;
 double xpos, ypos;
 bool clicked_on_object=false;
 bool on_object=false;
@@ -23,8 +24,10 @@ int clicked_obj_x, clicked_obj_y;
 float explode_scale = 0;
 bool update_table = false;
 float slide_scale = 0;
-
-
+float explode_scale_row=0;
+float slide_scale_column = 0;
+float explode_scale_column = 0;
+float slide_scale_row=0;
 
 bool vertical_update = false;
 vector<int> row_match_point;
@@ -35,6 +38,8 @@ bool row_match = false;
 bool vertical_slide=false;
 bool row_update = false;
 bool row_slide = false;
+
+bool restart = false;
 
 GLuint gProgram;
 int gWidth, gHeight;
@@ -394,7 +399,7 @@ void initVBO()
 
 void init() 
 {
-	ParseObj("bunny.obj");
+	ParseObj(obj_name);
 	//ParseObj("bunny.obj");
 
     glEnable(GL_DEPTH_TEST);
@@ -504,12 +509,38 @@ void checkMatches(vector<vector<int>>& color_vector)
     int res_hor=0;
     int x_hor, y_hor;
 
+    
+
     for(int i=0 ; i<grid_y; i++)
     {
         for(int j=0;j<grid_x; j++)
         {
             
-            if( !column_match_point.empty() && i==column_match_point[1] && j>column_match_point[0])
+            if( column_match_point.empty() && !row_match_point.empty() && j==row_match_point[0] && i>row_match_point[1])
+            {
+                continue;
+            }
+            int tmp = goHor(i,j,color_vector);
+            if(tmp>res_hor)
+            {
+                res_hor = tmp;
+                x_hor=i; y_hor=j;
+            }
+
+            
+            //cout<<column_match_point[0]<<","<<column_match_point[1]<<","<< column_match_point[2]<<endl;
+            
+            
+        }
+       
+    }
+
+    for(int i=0 ; i<grid_y; i++)
+    {
+        for(int j=0;j<grid_x; j++)
+        {
+            
+            if( row_match_point.empty() && !column_match_point.empty() && i==column_match_point[1] && j>column_match_point[0])
             {
                 continue;
             }
@@ -528,29 +559,6 @@ void checkMatches(vector<vector<int>>& color_vector)
        
     }
 
-    for(int i=0 ; i<grid_y; i++)
-    {
-        for(int j=0;j<grid_x; j++)
-        {
-            
-            
-            int tmp = goHor(i,j,color_vector);
-            if(tmp>res_hor)
-            {
-                res_hor = tmp;
-                x_hor=i; y_hor=j;
-            }
-
-            
-            //cout<<column_match_point[0]<<","<<column_match_point[1]<<","<< column_match_point[2]<<endl;
-            
-            
-        }
-       
-    }
-
-
-
     if(res>=2)
     {
         cout<<"vertical matching result for cell "<<y<<", "<<x<<" has value: "<<res<<endl;
@@ -562,6 +570,10 @@ void checkMatches(vector<vector<int>>& color_vector)
         column_match = true;
                 
     }
+    else
+    {
+        column_match_point.clear();
+    }
     if(res_hor>=2)
     {
         cout<<"horizontal matching result for cell "<<y_hor<<", "<<x_hor<<" has value: "<<res_hor<<endl;
@@ -571,6 +583,10 @@ void checkMatches(vector<vector<int>>& color_vector)
         row_match_point.push_back(res_hor);
         row_match_point.push_back(res_hor);
         row_match = true;
+    }
+    else
+    {
+        row_match_point.clear();
     }
     
 }
@@ -622,8 +638,24 @@ void rowMatchSlide(vector<vector<int>>& color_vector)
 }
 
 
+void checkBlackColor(vector<vector<int>>color_vector)
+{
+    for(int i=0;i<grid_y;i++)
+    {
+        for(int j=0;j<grid_x;j++)
+        {
+            if(color_vector[j][i]==-1 )
+            {
+                color_vector[j][i]=color_vector[j][i-1];
+            }
+        }
+    }
+}
+
+
 void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>& color_vector)
 {
+    
     glClearColor(0, 0, 0, 1);
     glClearDepth(1.0f);
     glClearStencil(0);
@@ -638,6 +670,7 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
         for(int j=0;j<grid_y; j++)
         {
             int color_code = color_vector[i][j];
+
 
                 switch (color_code)
                 {
@@ -670,95 +703,30 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                 glScalef(12.0/(grid_x*3),12.0/(grid_y*4),1.0);
                 
                 glRotatef(angle, 0, 1, 0);
-            
-                if(update_table && !clicked_on_object)
+
+
+                checkBlackColor(color_vector);
+    
+                if( !row_slide && vertical_slide && j <= column_match_point[0] &&  i == column_match_point[1])
                 {
-                    if(i == clicked_obj_x && clicked_obj_y==0)
+                    slide_scale_column += 0.4;
+                    glTranslatef(0,-slide_scale_column,0);
+                    if(slide_scale_column>=20)
                     {
-                        update_table = false;
-                        updateColors(color_vector);
+                        slide_scale_column=0;
                         
+                            vertical_slide=false;
+                            columnMatchSlide(color_vector);
+                            
+                            column_match_point.clear();
+                            checkMatches(color_vector);
 
                     }
-                    else if(i == clicked_obj_x && j < clicked_obj_y)
-                    {
-                        glTranslatef(0,-slide_scale,0);
-                        slide_scale += 0.1;
-                        if(slide_scale >= 7)
-                        {
-                            update_table = false;
-                            slide_scale = 0;
-                            updateColors(color_vector);
-                        }
-                    }
-                    
-                   
-                }                    
 
-
-
-                    if(clicked_on_object && i == clicked_obj_x && j == clicked_obj_y)
-                {
-                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
-                    explode_scale += 0.01;
-                    if(explode_scale > 0.5)
-                    {
-                        color_vector[i][j]=-1;
-                        explode_scale = 0;
-                        clicked_on_object = false;
-                        update_table=true;
-                    }
                 }
 
-               if(row_match && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
-               {
-                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
-                    explode_scale += 0.015;
-                    if(explode_scale > 0.5)
-                    {
-                        glColor3f(0,0,0);
-                        explode_scale = 0;
-                        row_match = false;
-                        row_match_point.clear();
-                        row_update = true;
-                    }
-               }
 
-
-                if(column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
-                {
-                    
-                    
-                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
-                    explode_scale += 0.015;
-                    if(explode_scale > 0.5)
-                    {
-                        glColor3f(0,0,0);
-                        explode_scale = 0;
-                        column_match = false;
-                        vertical_update=true;
-                    }
-                    
-
-                }
-                
-                if(row_update && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
-                {
-                    color_vector[i][j]=-1;
-                    row_match_point[3]--;
-                    if(row_match_point[3]<0)
-                    {
-                        row_match_point[3] = row_match_point[2];
-                        row_slide=true;
-                        row_update = false;
-
-                    }
-
-                    
-                }
-                
-               
-                if(  vertical_update  && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1] )
+                if(  !row_update && vertical_update  && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1] )
                 {
                         color_vector[i][j]=-1;
                         //slide_scale += 0.1;
@@ -779,34 +747,120 @@ void display(int grid_x, int grid_y, int width, int height, vector<vector<int>>&
                         //}
                 }
 
-                if(row_slide && i >= row_match_point[1] && i< row_match_point[1]+row_match_point[2] &&  j == row_match_point[0])
+                if(  !row_match && column_match && j <= column_match_point[0]+column_match_point[2]  && j>= column_match_point[0] && i == column_match_point[1])
                 {
-                    slide_scale += 0.2;
-                    glTranslatef(0,-slide_scale,0);
-                    if(slide_scale>=20)
+                    
+                    
+                    glScalef(1+explode_scale_column,1+explode_scale_column,1+explode_scale_column);
+                    explode_scale_column += 0.005;
+                    if(explode_scale_column > 0.5)
                     {
-                        slide_scale=0;
+                        explode_scale_column = 0;
+                        column_match = false;
+                        vertical_update=true;
+                    }
+                    
+
+                }
+
+
+
+                if(row_slide && i >= row_match_point[1] && i<= row_match_point[1]+row_match_point[2] &&  j <= row_match_point[0])
+                {
+                    slide_scale_row += 0.1;
+                    glTranslatef(0,-slide_scale_row,0);
+                    if(slide_scale_row>=6)
+                    {
+                        slide_scale_row=0;
                         
                             row_slide=false;
                             rowMatchSlide(color_vector);
+                            
+                            
                             row_match_point.clear();
+                            checkMatches(color_vector);
+
                     }
                 }
 
-                if(vertical_slide && j <= column_match_point[0] &&  i == column_match_point[1])
+
+
+                if(row_update && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
                 {
-                    slide_scale += 0.2;
-                    glTranslatef(0,-slide_scale,0);
-                    if(slide_scale>=20)
+                    color_vector[i][j]=-1;
+                    row_match_point[3]--;
+                    if(row_match_point[3]<0)
                     {
-                        slide_scale=0;
-                        
-                            vertical_slide=false;
-                            columnMatchSlide(color_vector);
-                            column_match_point.clear();
+                        row_match_point[3] = row_match_point[2];
+                        row_slide=true;
+                        row_update = false;
+
                     }
 
+                    
                 }
+
+
+                if(row_match && j == row_match_point[0] && i <= row_match_point[1]+row_match_point[2]  && i>= row_match_point[1])
+               {
+                    glScalef(1+explode_scale_row,1+explode_scale_row,1+explode_scale_row);
+                    explode_scale_row += 0.005;
+                    if(explode_scale_row > 0.5)
+                    {
+                        explode_scale_row = 0;
+                        row_match = false;
+                        row_update = true;
+                    }
+               }
+
+
+                if(update_table )
+                {
+                    if(i == clicked_obj_x && clicked_obj_y==0)
+                    {
+                        update_table = false;
+                        updateColors(color_vector);
+                        
+
+                    }
+                    else if(i == clicked_obj_x && j < clicked_obj_y)
+                    {
+                        glTranslatef(0,-slide_scale,0);
+                        slide_scale += 0.3;
+                        if(slide_scale >= 7)
+                        {
+                            update_table = false;
+                            slide_scale = 0;
+                            updateColors(color_vector);
+                        }
+                    }
+                    
+                   
+                }           
+
+                if(clicked_on_object && i == clicked_obj_x && j == clicked_obj_y) //clicklenen objeyi scale le
+                {
+                    glScalef(1+explode_scale,1+explode_scale,1+explode_scale);
+                    explode_scale += 0.01;
+                    if(explode_scale > 0.5)
+                    {
+                        color_vector[i][j]=-1;
+                        explode_scale = 0;
+                        clicked_on_object = false;
+                        update_table=true;
+                    }
+                }
+
+
+                
+            if(restart)
+            {
+                column_match_point.clear();
+                row_match_point.clear();
+                color_vector = getColorVector(grid_x,grid_y);
+                restart=false;
+            }   
+
             drawModel();
         }
     }
@@ -843,22 +897,33 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
+    
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+    {
+        restart = true;
+    }
+
+    
 }
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods)
 {
-    double res[2];
+    if(!row_slide && !vertical_slide && !row_match && !column_match && !clicked_on_object && !vertical_update && !row_update && !update_table  )
+    {
+        double res[2];
     
 
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        glfwGetCursorPos(window, &xpos, &ypos);
-		cout << "Left mouse button pressed at: (" << xpos << ", " << ypos << ")" << endl;
-        if( clickedOnObject(xpos,ypos,grid_x,grid_y))
-        {   
-            cout<<"On Object: "<<clicked_obj_x<<","<<clicked_obj_y <<endl;      
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        {
+            glfwGetCursorPos(window, &xpos, &ypos);
+            cout << "Left mouse button pressed at: (" << xpos << ", " << ypos << ")" << endl;
+            if( clickedOnObject(xpos,ypos,grid_x,grid_y))
+            {   
+                cout<<"On Object: "<<clicked_obj_x<<","<<clicked_obj_y <<endl;      
+            }
         }
     }
+    
 }
 
 void mainLoop(GLFWwindow* window, int grid_x, int grid_y, int width, int height, vector<vector<int>>& color_vector)
@@ -881,7 +946,7 @@ int main(int argc, char** argv)   // Create Main Function For Bringing It All To
     }
     grid_x = atoi(argv[1]);
     grid_y = atoi(argv[2]);
-    string obj_name = argv[3];
+    obj_name = argv[3];
     vector<vector<int>> color_vector = getColorVector(grid_x, grid_y);
 
     GLFWwindow* window;
@@ -923,6 +988,7 @@ int main(int argc, char** argv)   // Create Main Function For Bringing It All To
     init();
 
     glfwSetKeyCallback(window, keyboard);
+    
     glfwSetMouseButtonCallback(window, mouseCallback);
 
     glfwSetWindowSizeCallback(window, reshape);
